@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: tandm
+      POSTGRES_PASSWORD: tandm_dev_password
+      POSTGRES_DB: tandm
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tandm"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://tandm:tandm_dev_password@postgres:5432/tandm
+      JWT_SECRET: dev_jwt_secret_change_in_production
+      PORT: 3001
+    ports:
+      - "3041:3001"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: npm run dev
+
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_API_URL: http://localhost:3041/api
+    ports:
+      - "5174:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    command: npm run dev -- --host
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8084:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  postgres_data:

@@ -1,0 +1,122 @@
+import { useState, useEffect } from 'react'
+import { useApi } from '../hooks/useApi'
+import Timer from '../components/Timer'
+import ProcessList from '../components/ProcessList'
+import InstanceList from '../components/InstanceList'
+import MetadataFields from '../components/MetadataFields'
+
+export default function Dashboard() {
+  const api = useApi()
+  const [processes, setProcesses] = useState([])
+  const [instances, setInstances] = useState([])
+  const [selectedProcess, setSelectedProcess] = useState(null)
+  const [activeInstance, setActiveInstance] = useState(null)
+  const [metadata, setMetadata] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    try {
+      const [processRes, instanceRes] = await Promise.all([
+        api.get('/processes'),
+        api.get('/instances?limit=10'),
+      ])
+      setProcesses(processRes.processes)
+      setInstances(instanceRes.instances)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleStart = async (startTime) => {
+    if (!selectedProcess) return
+
+    try {
+      const result = await api.post('/instances', {
+        process_id: selectedProcess.id,
+        start_time: startTime.toISOString(),
+      })
+      setActiveInstance(result.instance)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const handleStop = async ({ endTime }) => {
+    if (!activeInstance) return
+
+    try {
+      await api.put(`/instances/${activeInstance.id}`, {
+        end_time: endTime.toISOString(),
+        metadata,
+      })
+      setActiveInstance(null)
+      setMetadata({})
+      loadData()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  if (loading) {
+    return <div className="text-center py-8 text-gray-500">Loading...</div>
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-gray-600">Track your process instances</p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 text-red-500 p-3 rounded">{error}</div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-6">
+          <Timer
+            onStart={handleStart}
+            onStop={handleStop}
+            disabled={!selectedProcess}
+          />
+
+          {activeInstance && selectedProcess?.metadata_schema?.fields?.length > 0 && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="font-medium text-gray-900 mb-4">Add Metadata</h3>
+              <MetadataFields
+                schema={selectedProcess.metadata_schema}
+                values={metadata}
+                onChange={setMetadata}
+              />
+            </div>
+          )}
+
+          <div className="bg-white rounded-lg shadow">
+            <div className="px-6 py-4 border-b">
+              <h3 className="font-medium text-gray-900">Recent Activity</h3>
+            </div>
+            <InstanceList instances={instances} />
+          </div>
+        </div>
+
+        <div>
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="font-medium text-gray-900 mb-4">Select Process</h3>
+            <ProcessList
+              processes={processes}
+              selectedId={selectedProcess?.id}
+              onSelect={setSelectedProcess}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
