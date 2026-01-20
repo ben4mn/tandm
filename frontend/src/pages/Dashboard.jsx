@@ -87,6 +87,19 @@ export default function Dashboard() {
             disabled={!selectedProcess}
           />
 
+          {!selectedProcess && !activeInstance && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800">
+              <p className="font-medium">Select a process to start tracking time</p>
+              <p className="text-sm mt-1">
+                Choose a process from the list on the right, or{' '}
+                <a href="/processes" className="text-indigo-600 hover:text-indigo-800 underline">
+                  create a new process
+                </a>{' '}
+                if you don't see one that fits.
+              </p>
+            </div>
+          )}
+
           {activeInstance && selectedProcess?.metadata_schema?.fields?.length > 0 && (
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="font-medium text-gray-900 mb-4">Add Metadata</h3>

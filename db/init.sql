@@ -44,6 +44,35 @@ CREATE INDEX idx_instances_process_id ON instances(process_id);
 CREATE INDEX idx_instances_user_id ON instances(user_id);
 CREATE INDEX idx_instances_start_time ON instances(start_time);
 
--- Note: Create your first admin user via the app registration,
--- then manually update their role in the database:
--- UPDATE users SET role = 'admin' WHERE email = 'your@email.com';
+-- =====================================================
+-- SEED DATA: Test Users and Example Processes
+-- =====================================================
+
+-- Test Users (password for both: password123)
+INSERT INTO users (id, email, password_hash, name, role) VALUES
+    ('00000000-0000-0000-0000-000000000001', 'admin@test.com', '$2b$10$BhU52XQ53EN2Zr.GWUHoBen/zJ2hF5Z4oioNzqP48loJ/I97kqZFq', 'Admin User', 'admin'),
+    ('00000000-0000-0000-0000-000000000002', 'user@test.com', '$2b$10$BhU52XQ53EN2Zr.GWUHoBen/zJ2hF5Z4oioNzqP48loJ/I97kqZFq', 'Test User', 'user');
+
+-- Example Processes (Official)
+INSERT INTO processes (name, description, is_official, created_by, metadata_schema) VALUES
+    (
+        'Market Visit Deck',
+        'Track time building market visit decks - pulling reports and using multiple tools',
+        true,
+        '00000000-0000-0000-0000-000000000001',
+        '{"fields": [{"name": "Current Step", "type": "select", "required": false, "options": ["Report Pull", "Data Analysis", "Slide Building", "Review", "Final Polish"]}, {"name": "Client/Market", "type": "text", "required": false}, {"name": "Notes", "type": "textarea", "required": false}]}'
+    ),
+    (
+        'Prep for Client Convo - Generic',
+        'Capture your prep process and time for client conversations',
+        true,
+        '00000000-0000-0000-0000-000000000001',
+        '{"fields": [{"name": "Client Name", "type": "text", "required": true}, {"name": "Prep Steps Completed", "type": "textarea", "required": false}, {"name": "Key Topics to Cover", "type": "textarea", "required": false}, {"name": "Notes", "type": "textarea", "required": false}]}'
+    ),
+    (
+        'Prep for Pitch',
+        'Track pitch preparation time and process',
+        true,
+        '00000000-0000-0000-0000-000000000001',
+        '{"fields": [{"name": "Pitch/Opportunity Name", "type": "text", "required": true}, {"name": "Prep Steps Completed", "type": "textarea", "required": false}, {"name": "Key Differentiators", "type": "textarea", "required": false}, {"name": "Notes", "type": "textarea", "required": false}]}'
+    );

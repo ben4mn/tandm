@@ -13,7 +13,11 @@ export default function MetadataFields({ schema, values, onChange }) {
         <div key={field.name}>
           <label className="block text-sm font-medium text-gray-700">
             {field.name}
-            {field.required && <span className="text-red-500 ml-1">*</span>}
+            {field.required ? (
+              <span className="text-red-500 ml-1">*</span>
+            ) : (
+              <span className="text-gray-400 ml-1 font-normal">(optional)</span>
+            )}
           </label>
 
           {field.type === 'text' && (
