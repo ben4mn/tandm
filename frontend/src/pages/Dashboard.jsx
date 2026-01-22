@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useApi } from '../hooks/useApi'
+import { useTimer } from '../hooks/useTimer'
+import { useDocumentPiP } from '../hooks/useDocumentPiP'
 import Timer from '../components/Timer'
+import PiPTimer from '../components/PiPTimer'
 import ProcessList from '../components/ProcessList'
 import InstanceList from '../components/InstanceList'
 import MetadataFields from '../components/MetadataFields'
 
 export default function Dashboard() {
   const api = useApi()
+  const timer = useTimer()
+  const pip = useDocumentPiP()
+
   const [processes, setProcesses] = useState([])
   const [instances, setInstances] = useState([])
   const [selectedProcess, setSelectedProcess] = useState(null)
@@ -18,6 +25,13 @@ export default function Dashboard() {
   useEffect(() => {
     loadData()
   }, [])
+
+  // Close PiP when timer stops
+  useEffect(() => {
+    if (!timer.isRunning && pip.isOpen) {
+      pip.closePiP()
+    }
+  }, [timer.isRunning, pip.isOpen])
 
   const loadData = async () => {
     try {
@@ -34,8 +48,10 @@ export default function Dashboard() {
     }
   }
 
-  const handleStart = async (startTime) => {
+  const handleStart = async () => {
     if (!selectedProcess) return
+
+    const startTime = timer.start()
 
     try {
       const result = await api.post('/instances', {
@@ -45,15 +61,19 @@ export default function Dashboard() {
       setActiveInstance(result.instance)
     } catch (err) {
       setError(err.message)
+      timer.reset()
     }
   }
 
-  const handleStop = async ({ endTime }) => {
+  const handleStop = async () => {
     if (!activeInstance) return
+
+    const result = timer.stop()
+    if (!result) return
 
     try {
       await api.put(`/instances/${activeInstance.id}`, {
-        end_time: endTime.toISOString(),
+        end_time: result.endTime.toISOString(),
         metadata,
       })
       setActiveInstance(null)
@@ -62,6 +82,10 @@ export default function Dashboard() {
     } catch (err) {
       setError(err.message)
     }
+  }
+
+  const handlePopOut = async () => {
+    await pip.openPiP({ width: 300, height: 150 })
   }
 
   if (loading) {
@@ -82,8 +106,14 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <Timer
+            isRunning={timer.isRunning}
+            elapsedSeconds={timer.elapsedSeconds}
+            formatTime={timer.formatTime}
             onStart={handleStart}
             onStop={handleStop}
+            onPopOut={handlePopOut}
+            isPiPSupported={pip.isSupported}
+            isPiPOpen={pip.isOpen}
             disabled={!selectedProcess}
           />
 
@@ -130,6 +160,17 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Render PiP Timer in the pop-out window */}
+      {pip.isOpen && pip.pipContainer && createPortal(
+        <PiPTimer
+          elapsedSeconds={timer.elapsedSeconds}
+          formatTime={timer.formatTime}
+          onStop={handleStop}
+          processName={selectedProcess?.name}
+        />,
+        pip.pipContainer
+      )}
     </div>
   )
 }
